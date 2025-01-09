@@ -1,4 +1,4 @@
-'use client';
+
 
 import { useState, useEffect } from 'react';
 import { Cell, Button } from '@telegram-apps/telegram-ui';

@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic';
 import { Link } from '@/components/Link/Link';
 import { LocaleSwitcher } from '@/components/LocaleSwitcher/LocaleSwitcher';
 import { Page } from '@/components/Page';
+import { ArgentWallet } from '@/components/ArgentWallet/ArgentWallet';
 
 const ArgentWallet = dynamic(
   () => import('@/components/ArgentWallet/ArgentWallet').then(mod => mod.ArgentWallet),
@@ -19,6 +20,13 @@ export default function Home() {
   return (
     <Page back={false}>
       <List>
+        <Section
+          header="Wallet Connection"
+          footer="Connect your Argent wallet to interact with Starknet"
+        >
+          <ArgentWallet />
+        </Section>
+
         <Section
           header="Features"
           footer="You can use these pages to learn more about features, provided by Telegram Mini Apps and other useful projects"

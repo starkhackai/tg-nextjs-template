@@ -15,8 +15,8 @@ export function ArgentWallet() {
         const { ArgentTMA } = await import('@argent/tma-wallet');
         const tma = ArgentTMA.init({
           environment: "sepolia",
-          appName: "Telegram Mini App Demo",
-          appTelegramUrl: "https://t.me/your_bot_name",
+          appName: "MOAI",
+          appTelegramUrl: "https://t.me/moai_bot/MOAI",
           sessionParams: {
             validityDays: 90,
             allowedMethods: []

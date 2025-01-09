@@ -7,7 +7,6 @@ import dynamic from 'next/dynamic';
 import { Link } from '@/components/Link/Link';
 import { LocaleSwitcher } from '@/components/LocaleSwitcher/LocaleSwitcher';
 import { Page } from '@/components/Page';
-import { ArgentWallet } from '@/components/ArgentWallet/ArgentWallet';
 
 const ArgentWallet = dynamic(
   () => import('@/components/ArgentWallet/ArgentWallet').then(mod => mod.ArgentWallet),

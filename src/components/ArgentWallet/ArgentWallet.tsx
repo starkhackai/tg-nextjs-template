@@ -58,10 +58,19 @@ export function ArgentWallet() {
       });
   }, [argentTMA]);
 
-  const handleConnect = async () => {
+  const handleConnectButton = async () => {
     if (!argentTMA) return;
     try {
-      await argentTMA.connect();
+      await argentTMA.requestConnection({
+        callbackData: 'custom_callback',
+        approvalRequests: [
+          {
+            tokenAddress: '0x049D36570D4e46f48e99674bd3fcc84644DdD6b96F7C741B1562B82f9e004dC7',
+            amount: BigInt(1000000000000000000).toString(),
+            spender: 'spender_address',
+          }
+        ],
+      });
     } catch (error) {
       console.error("Connection failed:", error);
     }
@@ -70,7 +79,7 @@ export function ArgentWallet() {
   return (
     <Cell>
       {!isConnected ? (
-        <Button onClick={handleConnect}>Connect Argent Wallet</Button>
+        <Button onClick={handleConnectButton}>Connect Argent Wallet</Button>
       ) : (
         <div>
           <p>Connected Address: {account?.address}</p>

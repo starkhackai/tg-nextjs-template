@@ -31,34 +31,29 @@ export const VoiceChat: FC = () => {
       trickle: true,
       config: {
         iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:stun2.l.google.com:19302' },
-          { urls: 'stun:stun3.l.google.com:19302' },
-          { urls: 'stun:stun4.l.google.com:19302' },
-          { urls: 'stun:stun.ekiga.net' },
-          { urls: 'stun:stun.ideasip.com' },
-          { urls: 'stun:stun.schlund.de' },
-          { urls: 'stun:stun.stunprotocol.org:3478' },
-          { urls: 'stun:stun.voiparound.com' },
-          { urls: 'stun:stun.voipbuster.com' },
-          { urls: 'stun:stun.voipstunt.com' },
-          { urls: 'stun:stun.voxgratia.org' },
           {
-            urls: 'turn:openrelay.metered.ca:80',
-            username: 'openrelayproject',
-            credential: 'openrelayproject'
+            urls: "stun:stun.relay.metered.ca:80",
           },
           {
-            urls: 'turn:openrelay.metered.ca:443',
-            username: 'openrelayproject',
-            credential: 'openrelayproject'
+            urls: "turn:global.relay.metered.ca:80",
+            username: "80c27bff49c6961b0c5bca2e",
+            credential: "Sv/o1Tiucp68/RWS",
           },
           {
-            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-            username: 'openrelayproject',
-            credential: 'openrelayproject'
-          }
+            urls: "turn:global.relay.metered.ca:80?transport=tcp",
+            username: "80c27bff49c6961b0c5bca2e",
+            credential: "Sv/o1Tiucp68/RWS",
+          },
+          {
+            urls: "turn:global.relay.metered.ca:443",
+            username: "80c27bff49c6961b0c5bca2e",
+            credential: "Sv/o1Tiucp68/RWS",
+          },
+          {
+            urls: "turns:global.relay.metered.ca:443?transport=tcp",
+            username: "80c27bff49c6961b0c5bca2e",
+            credential: "Sv/o1Tiucp68/RWS",
+          },
         ],
         iceCandidatePoolSize: 10
       }

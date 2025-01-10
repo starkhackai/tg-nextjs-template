@@ -4,8 +4,6 @@ import SimplePeer from 'simple-peer';
 import { useSignal, initData } from '@telegram-apps/sdk-react';
 import { pusherClient } from '@/lib/pusher';
 
-import './styles.css';
-
 interface Peer {
   userId: string;
   instance: SimplePeer.Instance;

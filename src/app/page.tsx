@@ -1,6 +1,6 @@
 'use client';
 
-import { Section, Cell, Image, List } from '@telegram-apps/telegram-ui';
+import { Section, Cell, Image, List, Button } from '@telegram-apps/telegram-ui';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 
@@ -13,18 +13,27 @@ const ArgentWallet = dynamic(
   { ssr: false }
 );
 
+const VoiceChat = dynamic(
+  () => import('@/components/VoiceChat/VoiceChat').then(mod => mod.VoiceChat),
+  { ssr: false }
+);
+
 export default function Home() {
   const t = useTranslations('i18n');
 
   return (
     <Page back={false}>
       <List>
+        <VoiceChat />
+        
         <Section
           header="Wallet Connection"
           footer="Connect your Argent wallet to interact with Starknet"
         >
           <ArgentWallet />
         </Section>
+
+       
 
         <Section
           header="Features"

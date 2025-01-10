@@ -1,0 +1,18 @@
+.voice-chat {
+  padding: 16px;
+}
+
+.voice-chat__user {
+  margin-bottom: 12px;
+  color: var(--tg-theme-text-color);
+}
+
+.voice-chat__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.voice-chat__button {
+  width: 100%;
+} 

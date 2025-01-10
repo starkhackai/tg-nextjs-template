@@ -23,13 +23,21 @@ export const VoiceChat: FC = () => {
   const user = useSignal(initData.user);
 
   const createPeer = (targetUserId: string, initiator: boolean, stream: MediaStream) => {
+    console.log('Creating peer connection:', { initiator, targetUserId });
     const peer = new SimplePeer({
       initiator,
       stream,
-      trickle: false
+      trickle: false,
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:global.stun.twilio.com:3478' }
+        ]
+      }
     });
 
     peer.on('signal', signal => {
+      console.log('Generated signal:', { type: signal.type, targetUserId });
       fetch('/api/pusher', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -43,7 +51,12 @@ export const VoiceChat: FC = () => {
       }).catch(console.error);
     });
 
+    peer.on('connect', () => {
+      console.log('Peer connection established with:', targetUserId);
+    });
+
     peer.on('stream', remoteStream => {
+      console.log('Received remote stream from:', targetUserId);
       setPeers(prev => {
         const newPeers = new Map(prev);
         const peerData = newPeers.get(targetUserId);
@@ -62,6 +75,10 @@ export const VoiceChat: FC = () => {
     peer.on('error', err => {
       console.error('Peer connection error:', err);
       setError('Connection error. Please try rejoining.');
+    });
+
+    peer.on('close', () => {
+      console.log('Peer connection closed with:', targetUserId);
     });
 
     return peer;
@@ -84,6 +101,7 @@ export const VoiceChat: FC = () => {
 
       // Handle user joined event
       channel.bind('user-joined', (data: { userId: string }) => {
+        console.log('User joined:', data.userId);
         if (data.userId !== user.id.toString() && streamRef.current) {
           const peer = createPeer(data.userId, true, streamRef.current);
           setPeers(prev => {
@@ -100,6 +118,7 @@ export const VoiceChat: FC = () => {
 
       // Handle user left event
       channel.bind('user-left', (data: { userId: string }) => {
+        console.log('User left:', data.userId);
         setPeers(prev => {
           const newPeers = new Map(prev);
           const peer = newPeers.get(data.userId);
@@ -113,26 +132,34 @@ export const VoiceChat: FC = () => {
       });
 
       // Handle signaling
-      channel.bind(`signal-${user.id}`, (data: { userId: string; signal: any }) => {
-        const peer = peers.get(data.userId);
-        if (peer) {
-          peer.instance.signal(data.signal);
-        } else if (streamRef.current) {
-          const newPeer = createPeer(data.userId, false, streamRef.current);
-          newPeer.signal(data.signal);
-          setPeers(prev => {
-            const newPeers = new Map(prev);
-            newPeers.set(data.userId, {
-              userId: data.userId,
-              instance: newPeer
+      channel.bind(`signal-${user.id}`, async (data: { userId: string; signal: any }) => {
+        console.log('Received signal:', { from: data.userId, type: data.signal.type });
+        try {
+          const peer = peers.get(data.userId);
+          if (peer) {
+            peer.instance.signal(data.signal);
+          } else if (streamRef.current) {
+            console.log('Creating new peer for signal from:', data.userId);
+            const newPeer = createPeer(data.userId, false, streamRef.current);
+            setPeers(prev => {
+              const newPeers = new Map(prev);
+              newPeers.set(data.userId, {
+                userId: data.userId,
+                instance: newPeer
+              });
+              return newPeers;
             });
-            return newPeers;
-          });
+            // Wait for the peer to be ready before signaling
+            await new Promise(resolve => setTimeout(resolve, 100));
+            newPeer.signal(data.signal);
+          }
+        } catch (error) {
+          console.error('Error handling signal:', error);
         }
       });
 
       // Join the room
-      fetch('/api/pusher', {
+      await fetch('/api/pusher', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -140,14 +167,13 @@ export const VoiceChat: FC = () => {
           userId: user.id.toString(),
           roomId: 'main'
         })
-      }).then(() => setIsConnected(true))
-        .catch(error => {
-          console.error('Error joining room:', error);
-          setError('Failed to join the room');
-        });
+      });
+      
+      setIsConnected(true);
+      console.log('Successfully joined the room');
 
     } catch (error) {
-      console.error('Error accessing microphone:', error);
+      console.error('Error starting voice chat:', error);
       setError('Error accessing microphone. Please check permissions.');
     }
   };
@@ -185,7 +211,11 @@ export const VoiceChat: FC = () => {
       streamRef.current = null;
     }
 
-    peers.forEach(peer => peer.instance.destroy());
+    peers.forEach(peer => {
+      if (peer.instance) {
+        peer.instance.destroy();
+      }
+    });
     setPeers(new Map());
     setParticipants([]);
     setIsConnected(false);

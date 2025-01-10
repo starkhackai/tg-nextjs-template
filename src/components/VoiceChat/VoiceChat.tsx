@@ -10,6 +10,8 @@ interface Peer {
   userId: string;
   instance: SimplePeer.Instance;
   stream?: MediaStream;
+  isSpeaking: boolean;
+  audioLevel: number;
 }
 
 export const VoiceChat: FC = () => {
@@ -20,8 +22,43 @@ export const VoiceChat: FC = () => {
   const [error, setError] = useState<string | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const channelRef = useRef<any>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserNodesRef = useRef<Map<string, AnalyserNode>>(new Map());
+  const animationFrameRef = useRef<number>();
   const user = useSignal(initData.user);
   const pendingPeersRef = useRef<Map<string, SimplePeer.Instance>>(new Map());
+
+  const detectSpeaking = (audioLevel: number) => {
+    // Adjust this threshold based on testing
+    return audioLevel > -50;
+  };
+
+  const updateAudioLevels = () => {
+    peers.forEach((peer, userId) => {
+      const analyser = analyserNodesRef.current.get(userId);
+      if (analyser) {
+        const data = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(data);
+        
+        // Calculate average volume level
+        const average = Array.from(data).reduce((a, b) => a + b, 0) / analyser.frequencyBinCount;
+        const normalizedLevel = (average / 255) * 100 - 100; // Convert to dB scale
+        
+        setPeers(prev => {
+          const newPeers = new Map(prev);
+          const peerData = newPeers.get(userId);
+          if (peerData) {
+            peerData.audioLevel = normalizedLevel;
+            peerData.isSpeaking = detectSpeaking(normalizedLevel);
+            newPeers.set(userId, peerData);
+          }
+          return newPeers;
+        });
+      }
+    });
+
+    animationFrameRef.current = requestAnimationFrame(updateAudioLevels);
+  };
 
   const createPeer = (targetUserId: string, initiator: boolean, stream: MediaStream) => {
     console.log('Creating peer connection:', { initiator, targetUserId });
@@ -84,11 +121,26 @@ export const VoiceChat: FC = () => {
 
     peer.on('stream', remoteStream => {
       console.log('Received remote stream from:', targetUserId);
+      
+      // Set up audio analysis
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioContext();
+      }
+
+      const audioContext = audioContextRef.current;
+      const source = audioContext.createMediaStreamSource(remoteStream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      analyserNodesRef.current.set(targetUserId, analyser);
+
       setPeers(prev => {
         const newPeers = new Map(prev);
         const peerData = newPeers.get(targetUserId);
         if (peerData) {
           peerData.stream = remoteStream;
+          peerData.isSpeaking = false;
+          peerData.audioLevel = -100;
           newPeers.set(targetUserId, peerData);
         }
         return newPeers;
@@ -97,6 +149,11 @@ export const VoiceChat: FC = () => {
       const audio = new Audio();
       audio.srcObject = remoteStream;
       audio.play().catch(console.error);
+
+      // Start audio level monitoring if not already started
+      if (!animationFrameRef.current) {
+        animationFrameRef.current = requestAnimationFrame(updateAudioLevels);
+      }
     });
 
     peer.on('error', err => {
@@ -155,7 +212,9 @@ export const VoiceChat: FC = () => {
             const newPeers = new Map(prev);
             newPeers.set(data.userId, {
               userId: data.userId,
-              instance: peer
+              instance: peer,
+              isSpeaking: false,
+              audioLevel: -100
             });
             return newPeers;
           });
@@ -198,7 +257,9 @@ export const VoiceChat: FC = () => {
               const newPeers = new Map(prev);
               newPeers.set(data.userId, {
                 userId: data.userId,
-                instance: newPeer
+                instance: newPeer,
+                isSpeaking: false,
+                audioLevel: -100
               });
               return newPeers;
             });
@@ -279,53 +340,81 @@ export const VoiceChat: FC = () => {
 
   useEffect(() => {
     return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+      analyserNodesRef.current.clear();
       disconnectVoiceChat();
     };
   }, []);
+
+  const getParticipantInitial = (userId: string) => {
+    // If it's the current user, use their first name's initial
+    if (userId === user?.id.toString() && user?.firstName) {
+      return user.firstName[0].toUpperCase();
+    }
+    // For other participants, use the first character of their ID
+    return userId[0].toUpperCase();
+  };
 
   return (
     <Section header="Voice Chat Room">
       <div className="voice-chat">
         {user && (
-          <div className="voice-chat__user">
+          <div className="text-sm text-gray-600 mb-4">
             Connected as: {user.firstName} {user.lastName}
           </div>
         )}
         
         {error && (
-          <div className="voice-chat__error">
+          <div className="text-red-500 mb-4">
             {error}
           </div>
         )}
 
-        <div className="voice-chat__participants">
-          {participants.length > 0 && (
-            <>
-              <div className="voice-chat__participants-header">
-                Participants ({participants.length}):
+        <div className="grid grid-cols-3 gap-6 mb-6">
+          {Array.from(peers.values()).map((peer) => (
+            <div key={peer.userId} className="flex flex-col items-center">
+              <div className={`
+                relative w-20 h-20 rounded-full flex items-center justify-center
+                bg-blue-100 text-blue-600 text-xl font-semibold
+                transition-all duration-300
+                ${peer.isSpeaking ? 'ring-4 ring-green-400 scale-110' : ''}
+                ${peer.audioLevel > -70 ? 'ring-2 ring-green-200' : ''}
+              `}>
+                {getParticipantInitial(peer.userId)}
+                <div className={`
+                  absolute -bottom-1 right-0 w-4 h-4 rounded-full
+                  ${peer.isSpeaking ? 'bg-green-400' : 'bg-gray-300'}
+                `} />
               </div>
-              <div className="voice-chat__participants-list">
-                {participants.map(userId => (
-                  <div key={userId} className="voice-chat__participant">
-                    User {userId}
-                  </div>
-                ))}
+              <div className="mt-2 text-sm text-gray-600">
+                {peer.userId === user?.id.toString() ? 'You' : `User ${peer.userId.slice(0, 4)}`}
               </div>
-            </>
-          )}
+            </div>
+          ))}
         </div>
 
-        <div className="voice-chat__controls">
+        <div className="flex justify-center gap-4">
           {!isConnected ? (
-            <Button className="voice-chat__button" onClick={startVoiceChat}>
+            <Button className="px-6 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600" onClick={startVoiceChat}>
               Join Voice Chat
             </Button>
           ) : (
             <>
-              <Button className="voice-chat__button" onClick={toggleMute}>
+              <Button 
+                className={`px-6 py-2 rounded-full ${isMuted ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'} text-white`}
+                onClick={toggleMute}
+              >
                 {isMuted ? 'Unmute' : 'Mute'}
               </Button>
-              <Button className="voice-chat__button" onClick={disconnectVoiceChat}>
+              <Button 
+                className="px-6 py-2 bg-gray-500 text-white rounded-full hover:bg-gray-600"
+                onClick={disconnectVoiceChat}
+              >
                 Leave Voice Chat
               </Button>
             </>

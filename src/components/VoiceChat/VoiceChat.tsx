@@ -2,11 +2,9 @@ import { FC, useEffect, useRef, useState } from 'react';
 import { Button, Section } from '@telegram-apps/telegram-ui';
 import SimplePeer from 'simple-peer';
 import { useSignal, initData } from '@telegram-apps/sdk-react';
+import { pusherClient } from '@/lib/pusher';
 
 import './styles.css';
-
-// This will automatically use the correct host in both development and production
-const SIGNALING_SERVER = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/ws`;
 
 interface Peer {
   userId: string;
@@ -21,7 +19,7 @@ export const VoiceChat: FC = () => {
   const [participants, setParticipants] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
+  const channelRef = useRef<any>(null);
   const user = useSignal(initData.user);
 
   const createPeer = (targetUserId: string, initiator: boolean, stream: MediaStream) => {
@@ -32,11 +30,17 @@ export const VoiceChat: FC = () => {
     });
 
     peer.on('signal', signal => {
-      wsRef.current?.send(JSON.stringify({
-        type: 'signal',
-        target: targetUserId,
-        signal
-      }));
+      fetch('/api/pusher', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'signal',
+          target: targetUserId,
+          signal,
+          userId: user?.id.toString(),
+          roomId: 'main'
+        })
+      }).catch(console.error);
     });
 
     peer.on('stream', remoteStream => {
@@ -50,7 +54,6 @@ export const VoiceChat: FC = () => {
         return newPeers;
       });
 
-      // Create and play audio element for the remote stream
       const audio = new Audio();
       audio.srcObject = remoteStream;
       audio.play().catch(console.error);
@@ -70,79 +73,78 @@ export const VoiceChat: FC = () => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
-      // Connect to signaling server
-      const ws = new WebSocket(SIGNALING_SERVER);
-      wsRef.current = ws;
+      if (!user?.id) {
+        setError('User ID not found');
+        return;
+      }
 
-      ws.onopen = () => {
-        if (!user?.id) {
-          setError('User ID not found');
-          return;
+      // Subscribe to the room channel
+      const channel = pusherClient.subscribe(`presence-room-main`);
+      channelRef.current = channel;
+
+      // Handle user joined event
+      channel.bind('user-joined', (data: { userId: string }) => {
+        if (data.userId !== user.id.toString() && streamRef.current) {
+          const peer = createPeer(data.userId, true, streamRef.current);
+          setPeers(prev => {
+            const newPeers = new Map(prev);
+            newPeers.set(data.userId, {
+              userId: data.userId,
+              instance: peer
+            });
+            return newPeers;
+          });
+          setParticipants(prev => [...prev, data.userId]);
         }
-        ws.send(JSON.stringify({
+      });
+
+      // Handle user left event
+      channel.bind('user-left', (data: { userId: string }) => {
+        setPeers(prev => {
+          const newPeers = new Map(prev);
+          const peer = newPeers.get(data.userId);
+          if (peer) {
+            peer.instance.destroy();
+            newPeers.delete(data.userId);
+          }
+          return newPeers;
+        });
+        setParticipants(prev => prev.filter(id => id !== data.userId));
+      });
+
+      // Handle signaling
+      channel.bind(`signal-${user.id}`, (data: { userId: string; signal: any }) => {
+        const peer = peers.get(data.userId);
+        if (peer) {
+          peer.instance.signal(data.signal);
+        } else if (streamRef.current) {
+          const newPeer = createPeer(data.userId, false, streamRef.current);
+          newPeer.signal(data.signal);
+          setPeers(prev => {
+            const newPeers = new Map(prev);
+            newPeers.set(data.userId, {
+              userId: data.userId,
+              instance: newPeer
+            });
+            return newPeers;
+          });
+        }
+      });
+
+      // Join the room
+      fetch('/api/pusher', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           type: 'join',
           userId: user.id.toString(),
           roomId: 'main'
-        }));
-        setIsConnected(true);
-      };
-
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-
-        switch (data.type) {
-          case 'user-joined':
-            if (streamRef.current) {
-              const peer = createPeer(data.userId, true, streamRef.current);
-              setPeers(prev => {
-                const newPeers = new Map(prev);
-                newPeers.set(data.userId, {
-                  userId: data.userId,
-                  instance: peer
-                });
-                return newPeers;
-              });
-              setParticipants(prev => [...prev, data.userId]);
-            }
-            break;
-
-          case 'user-left':
-            setPeers(prev => {
-              const newPeers = new Map(prev);
-              const peer = newPeers.get(data.userId);
-              if (peer) {
-                peer.instance.destroy();
-                newPeers.delete(data.userId);
-              }
-              return newPeers;
-            });
-            setParticipants(prev => prev.filter(id => id !== data.userId));
-            break;
-
-          case 'signal':
-            const peer = peers.get(data.userId);
-            if (peer) {
-              peer.instance.signal(data.signal);
-            } else if (streamRef.current) {
-              const newPeer = createPeer(data.userId, false, streamRef.current);
-              newPeer.signal(data.signal);
-              setPeers(prev => {
-                const newPeers = new Map(prev);
-                newPeers.set(data.userId, {
-                  userId: data.userId,
-                  instance: newPeer
-                });
-                return newPeers;
-              });
-            }
-            break;
-        }
-      };
-
-      ws.onerror = () => {
-        setError('Connection error. Please try again.');
-        disconnectVoiceChat();
-      };
+        })
+      }).then(() => setIsConnected(true))
+        .catch(error => {
+          console.error('Error joining room:', error);
+          setError('Failed to join the room');
+        });
 
     } catch (error) {
       console.error('Error accessing microphone:', error);
@@ -162,10 +164,20 @@ export const VoiceChat: FC = () => {
   const disconnectVoiceChat = () => {
     setError(null);
     
-    if (wsRef.current) {
-      wsRef.current.send(JSON.stringify({ type: 'leave' }));
-      wsRef.current.close();
-      wsRef.current = null;
+    if (channelRef.current) {
+      fetch('/api/pusher', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'leave',
+          userId: user?.id.toString(),
+          roomId: 'main'
+        })
+      }).catch(console.error);
+
+      channelRef.current.unbind_all();
+      pusherClient.unsubscribe(`presence-room-main`);
+      channelRef.current = null;
     }
 
     if (streamRef.current) {

@@ -21,6 +21,7 @@ export const VoiceChat: FC = () => {
   const streamRef = useRef<MediaStream | null>(null);
   const channelRef = useRef<any>(null);
   const user = useSignal(initData.user);
+  const pendingPeersRef = useRef<Map<string, SimplePeer.Instance>>(new Map());
 
   const createPeer = (targetUserId: string, initiator: boolean, stream: MediaStream) => {
     console.log('Creating peer connection:', { initiator, targetUserId });
@@ -53,6 +54,10 @@ export const VoiceChat: FC = () => {
 
     peer.on('connect', () => {
       console.log('Peer connection established with:', targetUserId);
+      // Move from pending to active peers
+      if (pendingPeersRef.current.has(targetUserId)) {
+        pendingPeersRef.current.delete(targetUserId);
+      }
     });
 
     peer.on('stream', remoteStream => {
@@ -79,6 +84,7 @@ export const VoiceChat: FC = () => {
 
     peer.on('close', () => {
       console.log('Peer connection closed with:', targetUserId);
+      pendingPeersRef.current.delete(targetUserId);
     });
 
     return peer;
@@ -112,6 +118,7 @@ export const VoiceChat: FC = () => {
             });
             return newPeers;
           });
+          pendingPeersRef.current.set(data.userId, peer);
           setParticipants(prev => [...prev, data.userId]);
         }
       });
@@ -128,6 +135,7 @@ export const VoiceChat: FC = () => {
           }
           return newPeers;
         });
+        pendingPeersRef.current.delete(data.userId);
         setParticipants(prev => prev.filter(id => id !== data.userId));
       });
 
@@ -135,11 +143,15 @@ export const VoiceChat: FC = () => {
       channel.bind(`signal-${user.id}`, async (data: { userId: string; signal: any }) => {
         console.log('Received signal:', { from: data.userId, type: data.signal.type });
         try {
-          const peer = peers.get(data.userId);
-          if (peer) {
-            peer.instance.signal(data.signal);
-          } else if (streamRef.current) {
-            console.log('Creating new peer for signal from:', data.userId);
+          const existingPeer = peers.get(data.userId)?.instance || pendingPeersRef.current.get(data.userId);
+          
+          if (existingPeer) {
+            existingPeer.signal(data.signal);
+            return;
+          }
+
+          if (data.signal.type === 'offer' && streamRef.current) {
+            console.log('Creating new peer for offer from:', data.userId);
             const newPeer = createPeer(data.userId, false, streamRef.current);
             setPeers(prev => {
               const newPeers = new Map(prev);
@@ -149,9 +161,10 @@ export const VoiceChat: FC = () => {
               });
               return newPeers;
             });
-            // Wait for the peer to be ready before signaling
-            await new Promise(resolve => setTimeout(resolve, 100));
+            pendingPeersRef.current.set(data.userId, newPeer);
             newPeer.signal(data.signal);
+          } else {
+            console.warn('Received signal but no peer found:', data);
           }
         } catch (error) {
           console.error('Error handling signal:', error);
@@ -216,6 +229,7 @@ export const VoiceChat: FC = () => {
         peer.instance.destroy();
       }
     });
+    pendingPeersRef.current.clear();
     setPeers(new Map());
     setParticipants([]);
     setIsConnected(false);

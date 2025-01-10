@@ -106,12 +106,31 @@ export const VoiceChat: FC = () => {
 
     peer.on('error', err => {
       console.error('Peer connection error:', err);
-      setError('Connection error. Please try rejoining.');
+      // Only set error if it's not a normal disconnection
+      if (!err.message.includes('User-Initiated Abort') && !err.message.includes('Close called')) {
+        setError('Connection error. Please try rejoining.');
+      }
+      // Clean up the peer connection
+      const targetId = targetUserId;
+      setPeers(prev => {
+        const newPeers = new Map(prev);
+        newPeers.delete(targetId);
+        return newPeers;
+      });
+      pendingPeersRef.current.delete(targetId);
     });
 
     peer.on('close', () => {
       console.log('Peer connection closed with:', targetUserId);
-      pendingPeersRef.current.delete(targetUserId);
+      // Clean up the peer connection
+      const targetId = targetUserId;
+      setPeers(prev => {
+        const newPeers = new Map(prev);
+        newPeers.delete(targetId);
+        return newPeers;
+      });
+      pendingPeersRef.current.delete(targetId);
+      setParticipants(prev => prev.filter(id => id !== targetId));
     });
 
     return peer;

@@ -15,7 +15,6 @@ import { ErrorPage } from '@/components/ErrorPage';
 import { useTelegramMock } from '@/hooks/useTelegramMock';
 import { useDidMount } from '@/hooks/useDidMount';
 import { useClientOnce } from '@/hooks/useClientOnce';
-import { setLocale } from '@/core/i18n/locale';
 import { init } from '@/core/init';
 
 import './styles.css';
@@ -39,11 +38,6 @@ function RootInner({ children }: PropsWithChildren) {
 
   const isDark = useSignal(miniApp.isDark);
   const initDataUser = useSignal(initData.user);
-
-  // Set the user locale.
-  useEffect(() => {
-    initDataUser && setLocale(initDataUser.languageCode);
-  }, [initDataUser]);
 
   return (
     <TonConnectUIProvider manifestUrl="/tonconnect-manifest.json">

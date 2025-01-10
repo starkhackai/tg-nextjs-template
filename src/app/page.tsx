@@ -1,11 +1,9 @@
 'use client';
 
 import { Section, Cell, Image, List, Button } from '@telegram-apps/telegram-ui';
-import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 
 import { Link } from '@/components/Link/Link';
-import { LocaleSwitcher } from '@/components/LocaleSwitcher/LocaleSwitcher';
 import { Page } from '@/components/Page';
 
 const ArgentWallet = dynamic(
@@ -19,7 +17,7 @@ const VoiceChat = dynamic(
 );
 
 export default function Home() {
-  const t = useTranslations('i18n');
+  
 
   return (
     <Page back={false}>
@@ -68,9 +66,7 @@ export default function Home() {
             </Cell>
           </Link>
         </Section>
-        <Section header={t('header')} footer={t('footer')}>
-          <LocaleSwitcher/>
-        </Section>
+        
       </List>
     </Page>
   );

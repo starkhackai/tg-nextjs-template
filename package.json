@@ -7,7 +7,8 @@
     "dev:https": "next dev --experimental-https",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "signaling": "node server.js"
   },
   "dependencies": {
     "@argent/tma-wallet": "1.21.2",
@@ -15,14 +16,17 @@
     "@telegram-apps/telegram-ui": "^2.1.5",
     "@tonconnect/ui-react": "^2.0.5",
     "@types/simple-peer": "^9.11.8",
+    "@types/socket.io-client": "^3.0.0",
+    "@types/ws": "^8.5.13",
     "eruda": "^3.0.1",
     "next": "14.2.4",
-    "next-intl": "^3.17.6",
     "normalize.css": "^8.0.1",
     "react": "^18",
     "react-dom": "^18",
     "simple-peer": "^9.11.1",
-    "starknet": "^6.11.0"
+    "socket.io-client": "^4.8.1",
+    "starknet": "^6.11.0",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/node": "^20",

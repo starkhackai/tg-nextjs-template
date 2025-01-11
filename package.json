@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@argent/tma-wallet": "1.21.2",
+    "@prisma/client": "^6.2.1",
     "@telegram-apps/sdk-react": "^2.0.22",
     "@telegram-apps/telegram-ui": "^2.1.5",
     "@tonconnect/ui-react": "^2.0.5",
@@ -21,6 +22,7 @@
     "eruda": "^3.0.1",
     "next": "14.2.4",
     "normalize.css": "^8.0.1",
+    "prisma": "^6.2.1",
     "pusher": "^5.2.0",
     "pusher-js": "8.4.0-rc2",
     "react": "^18",

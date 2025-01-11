@@ -37,11 +37,13 @@ export default function Home() {
           header="Features"
           footer="You can use these pages to learn more about features, provided by Telegram Mini Apps and other useful projects"
         >
+          <Link href="/moa">
+            <Cell subtitle="Create or join a multisig account with your group members">
+              Multisig Account (MOA)
+            </Cell>
+          </Link>
           <Link href="/ton-connect">
-            <Cell
-              
-              subtitle="Connect your TON wallet"
-            >
+            <Cell subtitle="Connect your TON wallet">
               TON Connect
             </Cell>
           </Link>

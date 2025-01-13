@@ -11,6 +11,11 @@ const ArgentWallet = dynamic(
   { ssr: false }
 );
 
+const StarknetKit = dynamic(
+  () => import('@/components/StarknetKit/StarknetKit').then(mod => mod.ConnectButtonStarknetkitNext),
+  { ssr: false }
+);
+
 const VoiceChat = dynamic(
   () => import('@/components/VoiceChat/VoiceChat').then(mod => mod.VoiceChat),
   { ssr: false }
@@ -24,6 +29,13 @@ export default function Home() {
       <List>
         <VoiceChat />
         
+        <Section
+          header="StarknetKit Connection"
+          footer="Connect your wallet using StarknetKit"
+        >
+          <StarknetKit />
+        </Section>
+
         <Section
           header="Wallet Connection"
           footer="Connect your Argent wallet to interact with Starknet"

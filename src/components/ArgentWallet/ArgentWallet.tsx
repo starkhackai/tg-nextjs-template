@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Cell, Button } from '@telegram-apps/telegram-ui';
-import { ArgentTMA, SessionAccountInterface } from '@argent/tma-wallet';
+import { ArgentTMA, SessionAccountInterface, SignedSession } from '@argent/tma-wallet';
 
 const argentTMA = ArgentTMA.init({
   environment: "sepolia",
@@ -61,6 +61,7 @@ export function ArgentWallet() {
     await argentTMA.requestConnection({
       callbackData: "custom_callback_data",
       approvalRequests: [
+        /*
         {
           token: {
           address: "0x049D36570D4e46f48e99674bd3fcc84644DdD6b96F7C741B1562B82f9e004dC7",
@@ -71,6 +72,7 @@ export function ArgentWallet() {
         amount: BigInt(100000).toString(),
         spender: "0x7e00d496e324876bbc8531f2d9a82bf154d1a04a50218ee74cdd372f75a551a",
         },
+        */
       ],
     });
   };

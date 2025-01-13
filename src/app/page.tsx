@@ -21,6 +21,11 @@ const VoiceChat = dynamic(
   { ssr: false }
 );
 
+const MOAInitializer = dynamic(
+  () => import('@/components/MOA/MOAInitializer').then(mod => mod.MOAInitializer),
+  { ssr: false }
+);
+
 export default function Home() {
   
 
@@ -29,6 +34,8 @@ export default function Home() {
       <List>
         <VoiceChat />
         
+        <MOAInitializer />
+
         <Section
           header="StarknetKit Connection"
           footer="Connect your wallet using StarknetKit"

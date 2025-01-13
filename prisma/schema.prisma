@@ -1,10 +1,42 @@
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  directUrl = env("POOLER_URL")
 }
 
 // Prisma client generator
 generator client {
   provider = "prisma-client-js"
+}
+
+
+
+model MultiOwnerAccount {
+  chatInstance String   @id // Using chat instance as unique identifier
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  status       MOAStatus @default(PENDING)
+  
+  participants ParticipantOnMOA[]
+}
+
+model User {
+  address String @id
+  publicKey String
+  moa ParticipantOnMOA[]
+}
+
+model ParticipantOnMOA {
+  participant    User       @relation(fields: [participantId], references: [address])
+  participantId  String
+  moa        MultiOwnerAccount @relation(fields: [moaId], references: [chatInstance])
+  moaId      String
+
+  @@id([participantId, moaId])
+}
+
+enum MOAStatus {
+  PENDING // moa has been created but not deployed
+  CREATED // moa has been deployed
+  EXPIRED // moa creation session has expired
 }

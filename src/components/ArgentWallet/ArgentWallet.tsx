@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Cell, Button } from '@telegram-apps/telegram-ui';
-import { ArgentTMA, SessionAccountInterface, SignedSession } from '@argent/tma-wallet';
+import { ArgentTMA, SessionAccountInterface, SignedSession, RawSigner } from '@argent/tma-wallet';
 
 const argentTMA = ArgentTMA.init({
   environment: "sepolia",
@@ -22,6 +22,8 @@ export function ArgentWallet() {
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [publicKey, setPublicKey] = useState<string>();
 
+  
+
   useEffect(() => {
     argentTMA
       .connect()
@@ -39,17 +41,9 @@ export function ArgentWallet() {
           return;
         }
 
-        // Get the session info which contains the public key
-        const session = await argentTMA.exportSignedSession();
-        console.log("session:", session);
-        if (session && 
-            typeof session === 'object' && 
-            'publicKey' in session && 
-            typeof session.publicKey === 'string') {
-          setPublicKey(session.publicKey);
-        }
-
+        
         setAccount(account);
+        setPublicKey(await account.signer.getPubKey());
         setIsConnected(true);
         console.log("callback data:", res.callbackData);
       })

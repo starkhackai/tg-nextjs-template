@@ -1,5 +1,3 @@
-
-
 import { useState, useEffect } from 'react';
 import { Cell, Button } from '@telegram-apps/telegram-ui';
 import { ArgentTMA, SessionAccountInterface } from '@argent/tma-wallet';
@@ -22,11 +20,12 @@ const argentTMA = ArgentTMA.init({
 export function ArgentWallet() {
   const [account, setAccount] = useState<SessionAccountInterface>();
   const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [publicKey, setPublicKey] = useState<string>();
 
   useEffect(() => {
     argentTMA
       .connect()
-      .then((res) => {
+      .then(async (res) => {
         if (!res) {
           setIsConnected(false);
           return;
@@ -40,6 +39,15 @@ export function ArgentWallet() {
           return;
         }
 
+        // Get the session info which contains the public key
+        const session = await argentTMA.exportSignedSession();
+        if (session && 
+            typeof session === 'object' && 
+            'publicKey' in session && 
+            typeof session.publicKey === 'string') {
+          setPublicKey(session.publicKey);
+        }
+
         setAccount(account);
         setIsConnected(true);
         console.log("callback data:", res.callbackData);
@@ -49,18 +57,12 @@ export function ArgentWallet() {
       });
   }, []);
 
-  
   const handleConnectButton = async () => {
-    // If not connected, trigger a connection request
-    // It will open the wallet and ask the user to approve the connection
-    // The wallet will redirect back to the app and the account will be available
-    // from the connect() method -- see above
     await argentTMA.requestConnection({
       callbackData: "custom_callback_data",
       approvalRequests: [
         {
           token: {
-            // Token address that you need approved
           address: "0x049D36570D4e46f48e99674bd3fcc84644DdD6b96F7C741B1562B82f9e004dC7",
           name: "Ethereum",
           symbol: "ETH",
@@ -76,6 +78,7 @@ export function ArgentWallet() {
   const handleClearSession = async () => {
     await argentTMA.clearSession();
     setAccount(undefined);
+    setPublicKey(undefined);
     setIsConnected(false);
   };
 
@@ -86,6 +89,7 @@ export function ArgentWallet() {
       ) : (
         <div>
           <p>Connected Address: {account?.address}</p>
+          {publicKey && <p>Public Key: {publicKey}</p>}
           <Button onClick={handleClearSession}>Clear Session</Button>
         </div>
       )}

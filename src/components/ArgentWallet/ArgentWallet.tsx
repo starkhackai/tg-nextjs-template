@@ -41,6 +41,7 @@ export function ArgentWallet() {
 
         // Get the session info which contains the public key
         const session = await argentTMA.exportSignedSession();
+        console.log("session:", session);
         if (session && 
             typeof session === 'object' && 
             'publicKey' in session && 
